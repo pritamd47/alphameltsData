@@ -4,6 +4,22 @@ import copy
 
 
 def returnCols(line):
+    '''
+    Reads the first line (Line containing P T Oxides info), and sets the 
+    sequence of oxides properly along with all the other thermodynamic data
+    that is to be read later. 
+
+    The default Sequence is as follows:
+    Pressure Temperature Phase Mass S H V Cp Vis Structure Formula [Oxides] Mg#
+
+    @params
+    line: The first non blank line, which starts as follows :
+        Pressure: ____ Temperature: ___ ....
+
+    @return
+    columns: List of variables that are to be read later in the run cycle in a
+        sequenctial order. 
+    '''
     line = line.split(' ')
     oxides = line[4:]
     columns = [
