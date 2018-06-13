@@ -1,6 +1,5 @@
 from collections import deque
 import pandas as pd
-import copy
 
 
 def returnCols(line):
@@ -56,7 +55,7 @@ def extractData(iteration, columns):
         P T Phase Mass S H Vol Cp Vis Struct Formula [Oxides] Mg#
     
     @returns:
-    List of lists containing None filled data, where required. 
+    DataFrame containing the values with proper column names
     ''' 
 
     # Initialising blank list where all the phases will be appended
@@ -73,9 +72,6 @@ def extractData(iteration, columns):
     
     # Extracting T from line1 (columns[1] = 'Temperature')
     T = line1[3]
-
-    # Setting PT Condition constant and others as None
-    PTcond = copy.deepcopy(values)
 
     # Extracting the list of oxides
     oxideList = line1[4:]
@@ -134,14 +130,14 @@ def extractData(iteration, columns):
             values[-1] = line.popleft()
 
         currentEnv.append(values)
+
+        # reset list of Values
         values = [None] * len(columns)
     
-    return currentEnv
+    return pd.DataFrame(data=currentEnv, columns=columns)
 
 
 if __name__ == '__main__':
-    Database = pd.DataFrame()
-
     with open(r"F:\windows_alphamelts_1-8\links\Phase_main_tbl.txt", 'r') as f:
         output = deque(f.readlines())
         iteration = []
@@ -152,6 +148,8 @@ if __name__ == '__main__':
         columns = returnCols(output[0])         # Passing the first non-Blank 
         #                                         Line
         
+        DF = pd.DataFrame(columns=columns)
+
         while(len(output) > 0):
             
             line = output.popleft().strip("\n")
@@ -160,5 +158,12 @@ if __name__ == '__main__':
                 iteration.append(line)
             elif line.split(" ")[0] == "Pressure":
                 if len(iteration) != 0:
+                    # Read the data and fill No data Values with None
                     currentEnv = extractData(iteration, columns)
+
+                    # Convert this to pandas DataFrame
+                    DF = DF.append(currentEnv)
                 iteration = [line]
+
+    with open(r'f:\windows_alphamelts_1-8\links\Scripts\out.csv', 'w') as out:
+        DF.to_csv(out)
