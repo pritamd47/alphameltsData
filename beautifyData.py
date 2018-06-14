@@ -166,4 +166,5 @@ if __name__ == '__main__':
                 iteration = [line]
 
     with open(r'f:\windows_alphamelts_1-8\links\Scripts\out.csv', 'w') as out:
+        print("Writing CSV")
         DF.to_csv(out)
