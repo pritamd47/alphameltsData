@@ -80,7 +80,7 @@ def mapPhases(phases):
     return tuple(beautifulPhases)
 
 
-def phasePLot(xData, yData, phases, deltaPhases, polygons):
+def phasePlot(xData, yData, phases, deltaPhases, polygons):
     fig, ax = plt.subplots(figsize=(6, 8))
 
     plt.axis([0, 1.1, min(yData), max(yData)])
