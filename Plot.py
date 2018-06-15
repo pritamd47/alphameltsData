@@ -3,6 +3,8 @@ from matplotlib import pyplot as plt
 from matplotlib.patches import Polygon
 import matplotlib
 import numpy as np
+from tkinter import filedialog
+from tkinter import *
 
 
 def extractData(DF):
@@ -78,16 +80,7 @@ def mapPhases(phases):
     return tuple(beautifulPhases)
 
 
-if __name__ == '__main__':
-    mainpath = '../output/2018-06-15_15-08/'
-    DF = pd.read_csv(mainpath + "Phase_main_tbl.csv")
-
-    xData, yData, phases, deltaPhase, polygons = extractData(DF)
-
-    phases = mapPhases(phases)
-
-    print(phases)
-
+def phasePlot(xData, yData, phases, deltaPhases, polygons):
     fig, ax = plt.subplots(figsize=(6, 8))
 
     plt.axis([0, 1.1, min(yData), max(yData)])
@@ -109,4 +102,43 @@ if __name__ == '__main__':
         ax.add_patch(pltPoly)
 
     lgd = ax.legend(loc="upper right", ncol=2)
-    plt.savefig(mainpath + "PhasePlot.svg")
+    plt.show()
+
+
+def welcomeScreen():
+    screenTxt = (
+        'Welcome\n'
+        'Choose option:\n'
+        '\t1. Plot Coexisting Phases\n'
+        '\t0. Exit\n'
+        '\nEnter Your Choice: '
+    )
+    choice = input(screenTxt)
+
+    return str(choice)
+
+
+def askDir():
+    root = Tk()
+    dir = filedialog.askdirectory()
+    root.destroy()
+
+    return dir + '/'
+
+
+if __name__ == '__main__':
+    choice = welcomeScreen()
+
+    while choice != '0':
+        if choice == '1':
+            mainpath = askDir()
+
+            DF = pd.read_csv(mainpath + "Phase_main_tbl.csv")
+
+            xData, yData, phases, deltaPhase, polygons = extractData(DF)
+
+            phases = mapPhases(phases)
+
+            phasePlot(xData, yData, phases, deltaPhase, polygons)
+
+        choice = welcomeScreen()
