@@ -1,8 +1,19 @@
 from collections import deque
 import pandas as pd
+from datetime import datetime as dt
+import os
+import sys
+import getopt
 
 
 def returnCols(line1, line2):
+    """Reads the first two lines and determines the columns that the DataFrame 
+    object will have
+    
+    Arguments:
+        line1 {str} -- First non blank Line
+        line2 {str} -- Second non blank Line
+    """
     '''
     Reads the first line (Line containing P T Oxides info), and sets the 
     sequence of oxides properly along with all the other thermodynamic data
@@ -23,10 +34,9 @@ def returnCols(line1, line2):
     # Stripping extra characters from line string
     line1 = line1.strip()
 
-    if line1 == "System Thermodynamic Data:":
+    if "System Thermodynamic Data" in line1 or "Bulk Composition" in line1:
         line2 = [x.strip() for x in line2.split(' ')]
         columns = line2
-
     else:
         line1 = line1.split(' ')
         oxides = line1[4:]
@@ -52,22 +62,14 @@ def returnCols(line1, line2):
 
 
 def _extractPhaseData(iteration, f, columns):
-    '''
-    This function extracts all the data from the output of any given 
-    alphaMelts run.
-
-    @params:
-    iteration: data from a single P T condition. It must be in the form of
-        a list containing lists of all the coexisting phases and their data as
-        a string
-    f: the Melt Remaining value (f)
-    columns: the columns that are to be extracted in the sequential order. Only 
-        needed for Oxides. Rest of the columns have to be in this order:
-        P T Phase Mass S H Vol Cp Vis Struct Formula [Oxides] Mg#
+    """extracts the data from a single PT condition and returns a dataframe object containing the data
     
-    @returns:
-    DataFrame containing the values with proper column names
-    ''' 
+    Arguments:
+        iteration {list} -- List of lists containing all the coexisting phases
+         and their data for any given PT conditions
+        f {list} -- List of F (melt remaining data)
+        columns {list} -- Columns of the DataFrame that are present
+    """
 
     # Initialising blank list where all the phases will be appended
     currentEnv = []
@@ -151,20 +153,16 @@ def _extractPhaseData(iteration, f, columns):
     return pd.DataFrame(data=currentEnv, columns=columns)
 
 
-def extractSystemMain(inputpaths):
-    '''
-    Reads the file System_main_tbl.txt and returns a datafarme object 
-    containing the information.
-
-    @params
-    inputpaths: sequential paths to all Input Data files
-
-    @return:
-    Dataframe containing System thermodynamic data
-
-    '''
-
-    phase_main, system_main = inputpaths
+def extractSystemMain(inputfiles):
+    """Reads the file System_main_tbl.txt and returns a fataframe object 
+    containing the information
+    
+    Arguments:
+        inputfiles {dict} -- Dictionary of all the input files
+    """
+    
+    phase_main = inputfiles['phase_main']
+    system_main = inputfiles['system_main']
     values = []
 
     with open(system_main) as f:
@@ -184,19 +182,18 @@ def extractSystemMain(inputpaths):
     return DF
 
 
-def extractPhaseMain(inputpaths, F):
-    '''
-    Extracts the Phase Data and also adds remaining melt data to the DataFrame
+def extractPhaseMain(inputfiles, F):
+    """Extracts the Phase Data, and also adds remaining melt data to the 
+    DataFrame
+    
+    Arguments:
+        inputfiles {dict} -- Dictionary of the input files.
+        F {list} -- List of F (remaining melt fraction) values for all the 
+            temperatures
+    """
 
-    @params
-    inputpaths: sequential list of input file paths
-
-    F: List of F (remaining melt fraction) values
-
-    @return
-    DataFrame containing Phase Related Data
-    '''
-    phase_main, system_main = inputpaths
+    phase_main = inputfiles['phase_main']
+    system_main = inputfiles['system_main']
 
     with open(phase_main, 'r') as f:
         output = deque(f.readlines())
@@ -205,7 +202,7 @@ def extractPhaseMain(inputpaths, F):
         Title = output.popleft().split(" ")[1]
         _ = output.popleft()                    # Deleting the blank line
         
-        columns = returnCols(output[0], None)         # Passing the first non-Blank 
+        columns = returnCols(output[0], None)   # Passing the first non-Blank 
         #                                         Line
         
         DF = pd.DataFrame(columns=columns)      # Empty Dataframe with required
@@ -241,39 +238,169 @@ def extractPhaseMain(inputpaths, F):
         return DF
 
 
-def extractData(inputpaths):
-    '''
-    Wrapper function which calls all the required Data Exraction functions with
-    required parameters and returns all the DataFrames.
+def extractBulkComp(inputfiles):
+    """Extracts the data from Bulk_comp_tbl.txt file
+    
+    Arguments:
+        inputfiles {dict} -- dict containing all the input file paths
+    """
+    bulk_comp = inputfiles["bulk_comp"]
 
-    @params
-    inputpaths: List of file paths to extract data from in sequence.
+    values = []
+    
+    with open(bulk_comp, 'r') as f:
+        output = deque(f.readlines())
+        Title = output.popleft().split(' ')[1]
+        _ = output.popleft()
 
-    @returns
-    List of DataFrames
-    '''
-    SystemMain = extractSystemMain(inputpaths)
+        columns = returnCols(
+            output.popleft(),
+            output.popleft()
+        )
+
+        for line in output:
+            values.append([value.strip() for value in line])
+
+    DF = pd.DataFrame(data=values, columns=columns)
+    return DF
+
+
+def extractData(inputfiles):
+    """Wrapper function which calls all the required Data Extraction funcitons 
+    with required parameterse and returns all the necessary DataFrame
+    
+    Arguments:
+        inputfiles {dict} -- Dictionary of all the input files
+    """
+
+    SystemMain = extractSystemMain(inputfiles)
     F = SystemMain['F'].values
 
-    PhaseMain = extractPhaseMain(inputpaths, F)
+    PhaseMain = extractPhaseMain(inputfiles, F)
+    
+    BulkMain = extractBulkComp(inputfiles)
 
-    return [PhaseMain, SystemMain]
+    return (PhaseMain, SystemMain, BulkMain)
+
+
+def extractDirName(filepath):
+    """Extracts the name of the Directory in which a file exists for its
+     file path.
+    
+    Arguments:
+        filepath {str} -- the path of the file, for which directory is to be
+            found
+    """
+    dir = '/'.join(filepath.split('/')[:-1])
+    return dir
+
+
+def moveTables(mainpath, outputDir):
+    """Moves the output files of the alphaMelts program to another directory,
+    hence achieving a more cleaner main working directory
+    
+    Arguments:
+        mainpath {str} -- Path of the main working direcotry
+        outputDir {str} -- Path where the output files are to be stored
+    """
+    files = os.listdir(mainpath)
+    files = filter(lambda x: '_tbl.txt' in x, files)
+
+    Dir = outputDir + "Tables/"
+
+    if not os.path.exists(Dir):
+        os.makedirs(Dir)
+    
+    for f in files:
+        origin = mainpath + f
+        destination = Dir + f
+        print("Moving {} to {}".format(origin, destination))
+        os.rename(origin, destination)
 
 
 def writeCSV(filepath, DF):
+    """Writes a DataFrame file to the filepath given as a csv file
+    
+    Arguments:
+        filepath {str} -- Complete path of the csv file
+        DF {pandas.DataFrame} -- The DataFrame object that is to be saved
+    """
+    if not os.path.isdir(extractDirName(filepath)):
+        os.makedirs(extractDirName(filepath))
     with open(filepath, 'w') as out:
-        print("Writing CSV")
+        print("Writing CSV at: {}".format(filepath))
         DF.to_csv(out)
 
 
+def getArgs():
+    """Reads the arguments and returns the path of the directory where all the 
+    output files are present
+    """
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "io", ["ifile=", "ofile="])
+    except getopt.GetoptError:
+        print('{} -i <inputfile>'.format(sys.argv[0]))
+        sys.exit(2)
+
+    for opt, arg in opts:
+        if opt == '-h':
+            print('{} -i <inputfile>'.format(sys.argv[0]))
+            sys.exit()
+        elif opt in ("-i", "--ifile"):
+            inputfile = args[0]
+
+    return inputfile
+
+
 if __name__ == '__main__':
-    phase_main = r"F:\windows_alphamelts_1-8\links\Phase_main_tbl.txt"
-    system_main = r"F:\windows_alphamelts_1-8\links\System_main_tbl.txt"
-
-    inputpaths = (phase_main, system_main)
-
-    phaseOutput = r'f:\windows_alphamelts_1-8\links\Scripts\Phase_main_tbl.csv'
+    # Input the location where the data files are present
+    if len(sys.argv) > 1:
+        mainpath = getArgs()
+    else:
+        mainpath = input("Enter path to output files (Leave blank for default): ")
+        if mainpath == '':
+            mainpath = '../'
     
-    PhaseMain, SystemMain = extractData(inputpaths)
+    outputpath = mainpath + "output/{}/".format(
+        dt.now().strftime('%Y-%m-%d_%H-%M')
+    )
+
+    phase_main = mainpath + "Phase_main_tbl.txt"
+    system_main = mainpath + "System_main_tbl.txt"
+    bulk_comp = mainpath + "Bulk_comp_tbl.txt"
+    liquid_comp = mainpath + "Liquid_comp_tbl.txt"  # redundant
+    solid_comp = mainpath + "Solid_comp_tbl.txt"
+    phase_mass = mainpath + "Phase_mass_tbl.txt"    # redundant
+    phase_vol = mainpath + "Phase_vol_tbl.txt"      # redundant
+    trace_main = mainpath + "Trace_main_tbl.txt"
+
+    inputpaths = (
+        phase_main,
+        system_main,
+        bulk_comp,
+        solid_comp,
+        trace_main
+    )
+    inputnames = (
+        'phase_main',
+        'system_main',
+        'bulk_comp',
+        'solid_comp',
+        'trace_main'
+    )
+
+    inputfiles = dict(zip(inputnames, inputpaths))
+   
+    phaseOutput = outputpath + 'Phase_main_tbl.csv'
+    systemOutput = outputpath + 'System_main_tbl.csv'
+    bulkOutput = outputpath + 'Bulk_comp_tbl.csv'
+    
+    PhaseMain, SystemMain, BulkComp = extractData(inputfiles)
 
     writeCSV(phaseOutput, PhaseMain)
+    writeCSV(systemOutput, SystemMain)
+    writeCSV(bulkOutput, BulkComp)
+
+    # Cleaning the directory
+    moveTables(mainpath, outputpath)
+
