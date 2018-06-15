@@ -118,16 +118,21 @@ def welcomeScreen():
     return str(choice)
 
 
+def askDir():
+    root = Tk()
+    dir = filedialog.askdirectory()
+    root.destroy()
+
+    return dir + '/'
+
+
 if __name__ == '__main__':
     choice = welcomeScreen()
 
     while choice != '0':
         if choice == '1':
-            root = Tk()
-            dir = filedialog.askdirectory()
-            root.destroy()
+            mainpath = askDir()
 
-            mainpath = dir + '/'
             DF = pd.read_csv(mainpath + "Phase_main_tbl.csv")
 
             xData, yData, phases, deltaPhase, polygons = extractData(DF)
