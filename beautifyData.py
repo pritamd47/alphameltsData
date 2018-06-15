@@ -14,28 +14,13 @@ def returnCols(line1, line2):
         line1 {str} -- First non blank Line
         line2 {str} -- Second non blank Line
     """
-    '''
-    Reads the first line (Line containing P T Oxides info), and sets the 
-    sequence of oxides properly along with all the other thermodynamic data
-    that is to be read later. 
-
-    The default Sequence is as follows:
-    Pressure Temperature Phase Mass S H V Cp Vis Structure Formula [Oxides] Mg#
-
-    @params
-    line1: The first non blank line
-    line2: The Second non blank line. None can be passed in case where columns
-        being extracted are for the main phase table
-
-    @return
-    columns: List of variables that are to be read later in the run cycle in a
-        sequenctial order. 
-    '''
+    
     # Stripping extra characters from line string
     line1 = line1.strip()
 
     if "System Thermodynamic Data" in line1 or "Bulk Composition" in line1:
         line2 = [x.strip() for x in line2.split(' ')]
+        line2 = list(filter(None, line2))
         columns = line2
     else:
         line1 = line1.split(' ')
@@ -177,8 +162,9 @@ def extractSystemMain(inputfiles):
 
         for line in output:
             values.append([value.strip() for value in line.split()])
-        
+    
     DF = pd.DataFrame(data=values, columns=columns)
+    DF['F'] = pd.to_numeric(DF['F']).cumprod()
     return DF
 
 
@@ -250,6 +236,7 @@ def extractBulkComp(inputfiles):
     
     with open(bulk_comp, 'r') as f:
         output = deque(f.readlines())
+
         Title = output.popleft().split(' ')[1]
         _ = output.popleft()
 
@@ -259,7 +246,7 @@ def extractBulkComp(inputfiles):
         )
 
         for line in output:
-            values.append([value.strip() for value in line])
+            values.append([value.strip() for value in line.split(' ')])
 
     DF = pd.DataFrame(data=values, columns=columns)
     return DF
