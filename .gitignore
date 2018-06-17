@@ -103,3 +103,6 @@ venv.bak/
 # mypy
 .mypy_cache/
 output/
+DataAnalysis.ipynb
+.ipynb_checkpoints/
+.vscode/
