@@ -138,6 +138,13 @@ def _extractPhaseData(iteration, f, columns):
     return pd.DataFrame(data=currentEnv, columns=columns)
 
 
+def findDescriptor(obj):
+    while ("Title" in obj[0] or len(obj[0])<4):
+        obj.popleft()
+    
+    return obj
+
+
 def extractSystemMain(inputfiles):
     """Reads the file System_main_tbl.txt and returns a fataframe object 
     containing the information
@@ -153,8 +160,7 @@ def extractSystemMain(inputfiles):
     with open(system_main) as f:
         output = deque(f.readlines())
 
-        System = output.popleft().split(' ')[1]
-        _ = output.popleft()                    # Deleting blank line
+        output = findDescriptor(output)
         columns = returnCols(
             output.popleft(),                   # Passing first two Non Blank
             output.popleft()                    # lines
@@ -185,8 +191,7 @@ def extractPhaseMain(inputfiles, F):
         output = deque(f.readlines())
         iteration = []
 
-        Title = output.popleft().split(" ")[1]
-        _ = output.popleft()                    # Deleting the blank line
+        output = findDescriptor(output)
         
         columns = returnCols(output[0], None)   # Passing the first non-Blank 
         #                                         Line
@@ -220,7 +225,7 @@ def extractPhaseMain(inputfiles, F):
                 # Next iteration
                 iteration = [line]
                 faccessor += 1
-        
+
         return DF
 
 
@@ -237,8 +242,7 @@ def extractBulkComp(inputfiles):
     with open(bulk_comp, 'r') as f:
         output = deque(f.readlines())
 
-        Title = output.popleft().split(' ')[1]
-        _ = output.popleft()
+        output = findDescriptor(output)
 
         columns = returnCols(
             output.popleft(),
@@ -266,6 +270,18 @@ def extractData(inputfiles):
     PhaseMain = extractPhaseMain(inputfiles, F)
     
     BulkMain = extractBulkComp(inputfiles)
+
+    convertTemp = input("[?] Do you want to convert Temperatures to C from K (y/n): ")
+
+    if convertTemp.capitalize() == 'Y':
+        convertTemp = True
+    else:
+        convertTemp = False
+
+    if convertTemp:
+        PhaseMain['Temperature'] = PhaseMain['Temperature'].astype(float) - 273.15
+        BulkMain['Temperature'] = BulkMain['Temperature'].astype(float) - 273.15
+        SystemMain['Temperature'] = SystemMain['Temperature'].astype(float) - 273.15   
 
     return (PhaseMain, SystemMain, BulkMain)
 
@@ -348,7 +364,7 @@ if __name__ == '__main__':
         if mainpath == '':
             mainpath = '../'
     
-    outputpath = mainpath + "output/{}/".format(
+    outputpath = mainpath + "/Scripts/output/{}/".format(
         dt.now().strftime('%Y-%m-%d_%H-%M')
     )
 
@@ -360,6 +376,7 @@ if __name__ == '__main__':
     phase_mass = mainpath + "Phase_mass_tbl.txt"    # redundant
     phase_vol = mainpath + "Phase_vol_tbl.txt"      # redundant
     trace_main = mainpath + "Trace_main_tbl.txt"
+    
 
     inputpaths = (
         phase_main,

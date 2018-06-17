@@ -2,9 +2,11 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from matplotlib.patches import Polygon
 import matplotlib
+from matplotlib.ticker import MultipleLocator
 import numpy as np
 from tkinter import filedialog
 from tkinter import *
+import os
 
 
 def extractData(DF):
@@ -52,6 +54,8 @@ def extractData(DF):
                 (0, temperature),
                 (F, temperature)
             ]
+        else:
+            currentPolygon.append((F, temperature))
 
     return xData, yData, phases, deltaPhase, polygons
     
@@ -66,7 +70,8 @@ def mapPhases(phases):
         'clinopyroxene': 'Cpx',
         'garnet': 'Grt',
         'spinel': 'Spi',
-        'aenigmatite': 'Angmt'
+        'aenigmatite': 'Angmt',
+        'olivine': 'Ol'
     }
 
     beautifulPhases = []
@@ -80,13 +85,19 @@ def mapPhases(phases):
     return tuple(beautifulPhases)
 
 
-def phasePlot(xData, yData, phases, deltaPhases, polygons):
+def phasePlot(xData, yData, phases, deltaPhases, polygons, title, outputpath=None):
     fig, ax = plt.subplots(figsize=(6, 8))
 
     plt.axis([0, 1.1, min(yData), max(yData)])
     plt.xlabel('Melt fraction (f)')
     plt.ylabel('Temperature (T)')
+
+    minorLocator = MultipleLocator(5)
+    majorLocator = MultipleLocator(20)
+    ax.yaxis.set_minor_locator(minorLocator)
+
     plt.grid(alpha=0.5, linestyle='--')
+    plt.title(title)
 
     # Colors
     cmap = matplotlib.cm.get_cmap('Wistia')
@@ -98,11 +109,20 @@ def phasePlot(xData, yData, phases, deltaPhases, polygons):
             polygon,
             facecolor=color,
             edgecolor='0.1',
-            label=", ".join(phase))
+            label=" + ".join(phase)
+        )
         ax.add_patch(pltPoly)
 
-    lgd = ax.legend(loc="upper right", ncol=2)
-    plt.show()
+    lgd = ax.legend(loc="upper left", bbox_to_anchor=(1, 1))
+    # plt.show()
+
+    if outputpath:
+        print("[+] Saving Plot at: {}".format(outputpath))
+        if not os.path.exists(outputpath):
+            os.makedirs(outputpath)
+        fpath = outputpath + 'phasePlot.svg'
+        plt.savefig(fpath, bbox_inches='tight')
+        plt.savefig(fpath.split('.')[0]+'.jpg', format='jpg', bbox_inches='tight')
 
 
 def welcomeScreen():
@@ -118,9 +138,19 @@ def welcomeScreen():
     return str(choice)
 
 
-def askDir():
+def askDir(lookfor=None):
+
+    if lookfor:
+        title = 'Select the {}'.format(lookfor)
+    else:
+        title = 'Select Folder'
+
     root = Tk()
-    dir = filedialog.askdirectory()
+    dir = filedialog.askdirectory(
+        initialdir=os.getcwd(),
+        title=title
+    )
+    root.withdraw()
     root.destroy()
 
     return dir + '/'
@@ -131,7 +161,8 @@ if __name__ == '__main__':
 
     while choice != '0':
         if choice == '1':
-            mainpath = askDir()
+            mainpath = askDir(lookfor='folder with CSV files')
+            outputpath = mainpath + 'plots/'
 
             DF = pd.read_csv(mainpath + "Phase_main_tbl.csv")
 
@@ -139,6 +170,16 @@ if __name__ == '__main__':
 
             phases = mapPhases(phases)
 
-            phasePlot(xData, yData, phases, deltaPhase, polygons)
+            title = input("Enter Title for Plot: ")
+
+            phasePlot(
+                xData,
+                yData,
+                phases,
+                deltaPhase,
+                polygons,
+                title,
+                outputpath
+            )
 
         choice = welcomeScreen()
