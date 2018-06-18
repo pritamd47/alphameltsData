@@ -398,12 +398,20 @@ def extractData(inputfiles):
     else:
         convertTemp = False
 
-    if convertTemp:
-        # PhaseMain['Temperature'] = PhaseMain['Temperature'].astype(float) - 273.15
-        # BulkMain['Temperature'] = BulkMain['Temperature'].astype(float) - 273.15
-        # SystemMain['Temperature'] = SystemMain['Temperature'].astype(float) - 273.15   
+    if convertTemp: 
         for key in Data.keys():
             Data[key]['Temperature'] = Data[key]['Temperature'].astype(float) - 273.15
+  
+    choice = input("[?] Do you want to create separate CSV files for every Phase? (y/n): ")
+    if choice.capitalize() == 'Y':
+        choice = True
+    else:
+        choice = False
+
+    phases = _separatePhaseFiles(phaseMain)
+
+    if phases:
+        Data.update(phases)
 
     return Data    
 
@@ -439,7 +447,7 @@ def moveTables(mainpath, outputDir):
     for f in files:
         origin = mainpath + f
         destination = Dir + f
-        print("Moving {} to {}".format(origin, destination))
+        print("[+] Moving {} to {}".format(origin, destination))
         os.rename(origin, destination)
 
 
@@ -536,6 +544,14 @@ def figureoutTable(filepath):
             tbl = 0
 
     return tbl
+
+
+def _separatePhaseFiles(phaseMainDF):
+    Data = dict()
+    for phase in phaseMainDF['Phase'].unique():
+        Data[phase] = phaseMainDF[phaseMainDF['Phase'] == phase]
+    
+    return Data
 
 
 if __name__ == '__main__':
