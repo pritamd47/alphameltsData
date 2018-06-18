@@ -85,7 +85,13 @@ def mapPhases(phases):
     return tuple(beautifulPhases)
 
 
-def phasePlot(xData, yData, phases, deltaPhases, polygons, title, outputpath=None):
+def phasePlot(DF, title, outputpath=None):
+    xData, yData, phases, deltaPhase, polygons = extractData(DF)
+
+    title = input("\nEnter Title for Graph: ")
+
+    phases = mapPhases(phases)
+
     fig, ax = plt.subplots(figsize=(6, 8))
 
     plt.axis([0, 1.1, min(yData), max(yData)])
@@ -114,15 +120,53 @@ def phasePlot(xData, yData, phases, deltaPhases, polygons, title, outputpath=Non
         ax.add_patch(pltPoly)
 
     lgd = ax.legend(loc="upper left", bbox_to_anchor=(1, 1))
-    # plt.show()
+    
+    choice = input("\nDo you want to see the plot? (Y/N): ")
+
+    if choice.upper() == 'Y':
+        plt.show()
+
+    choice("\nDo you want to save? (Y/N): ")
+    if choice.upper() == 'Y' and outputpath == None:
+        outputpath = input("Where do you want to save (relative path): ")
 
     if outputpath:
         print("[+] Saving Plot at: {}".format(outputpath))
         if not os.path.exists(outputpath):
-            os.makedirs(outputpath)
+            try:
+                os.makedirs(outputpath)
+            except Exception as e:
+                print(e.args)
+                sys.exit(2)
+
         fpath = outputpath + 'phasePlot.svg'
         plt.savefig(fpath, bbox_inches='tight')
         plt.savefig(fpath.split('.')[0]+'.jpg', format='jpg', bbox_inches='tight')
+
+
+def askAxes(DF):
+    columns = list(DF.columns.values)
+
+    options = dict(zip(list(range(len(columns))), columns))
+
+    print(options)
+
+
+def fractionationScheme(mainpath, outputpath):
+    print("\nChoose DataFrame for X Data")
+    DF1 = askFile("Choose DataFrame for X Data")
+
+    choice = input("\nIs the Y Data in the same Dataframe? (Y/N): ")
+
+    if choice.upper() == 'Y':
+        DF2 = DF1
+    else:
+        DF2 = askFile("Choose DataFrame for Y Data")
+    
+    DF1, DF2 = readDf(DF1), readDf(DF2)
+
+    xData = askAxes(DF1)
+
 
 
 def welcomeScreen():
@@ -130,6 +174,7 @@ def welcomeScreen():
         'Welcome\n'
         'Choose option:\n'
         '\t1. Plot Coexisting Phases\n'
+        '\t2. Plot Fractionation Scheme\n'
         '\t0. Exit\n'
         '\nEnter Your Choice: '
     )
@@ -138,7 +183,8 @@ def welcomeScreen():
     return str(choice)
 
 
-def askDir(lookfor=None):
+def askDir(lookfor='Working Directory'):
+    print("Please select the Working Directory")
 
     if lookfor:
         title = 'Select the {}'.format(lookfor)
@@ -153,33 +199,38 @@ def askDir(lookfor=None):
     root.withdraw()
     root.destroy()
 
-    return dir + '/'
+    dir += '/'
+    outputpath = dir + 'plots/'
+
+    return dir, outputpath
+
+
+def askFile(lookfor=None):
+    if lookfor:
+        title = lookfor
+    else:
+        title = "Select File"
+    
+    root = Tk()
+    f = filedialog.askopenfilename(title=title)
+
+    return f
+
+
+def readDf(path):
+    DF = pd.read_csv(path)
+    return DF
 
 
 if __name__ == '__main__':
+    mainpath, outputpath = askDir()
+
     choice = welcomeScreen()
 
     while choice != '0':
         if choice == '1':
-            mainpath = askDir(lookfor='folder with CSV files')
-            outputpath = mainpath + 'plots/'
-
-            DF = pd.read_csv(mainpath + "Phase_main_tbl.csv")
-
-            xData, yData, phases, deltaPhase, polygons = extractData(DF)
-
-            phases = mapPhases(phases)
-
-            title = input("Enter Title for Plot: ")
-
-            phasePlot(
-                xData,
-                yData,
-                phases,
-                deltaPhase,
-                polygons,
-                title,
-                outputpath
-            )
+            phasePlot(DF, outputpath)
+        elif choice == '2':
+            fractionationScheme(mainpath, outputpath)
 
         choice = welcomeScreen()

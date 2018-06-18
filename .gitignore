@@ -104,5 +104,5 @@ venv.bak/
 .mypy_cache/
 output/
 DataAnalysis.ipynb
-.vscode/
 .ipynb_checkpoints/
+.vscode/
