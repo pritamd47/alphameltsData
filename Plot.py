@@ -79,7 +79,7 @@ def mapPhases(phases):
         'orthopyroxene': 'Opx',
         'clinopyroxene': 'Cpx',
         'garnet': 'Grt',
-        'spinel': 'Spi',
+        'spinel': 'Sp',
         'aenigmatite': 'Angmt',
         'olivine': 'Ol'
     }
@@ -95,7 +95,7 @@ def mapPhases(phases):
     return tuple(beautifulPhases)
 
 
-def phasePlot(mainpath, title, outputpath=None):
+def phasePlot(mainpath, outputpath=None, title=None):
     filename = "phase_main.csv"
     DF = pd.read_csv(os.path.join(mainpath, filename))
 
@@ -109,8 +109,8 @@ def phasePlot(mainpath, title, outputpath=None):
     fig, ax = plt.subplots(figsize=(6, 8))
 
     plt.axis([0, 1.1, min(yData), max(yData)])
-    plt.xlabel('Melt fraction (f)')
-    plt.ylabel('Temperature ()')
+    plt.xlabel('Melt fraction (F)')
+    plt.ylabel('Temperature')
 
     minorLocator = MultipleLocator(5)
     majorLocator = MultipleLocator(20)
@@ -238,7 +238,6 @@ def fractionationScheme(mainpath, outputpath):
         fig.savefig(fpath+'.jpg', bbox_inches='tight', )
     
 
-
 def welcomeScreen():
     screenTxt = (
         'Welcome\n'
@@ -260,8 +259,21 @@ def askDir(lookfor='Working Directory'):
         title = 'Select the {}'.format(lookfor)
     else:
         title = 'Select Folder'
-
+    
+    # Make a top-level instance and hide since it is ugly and big.
     root = Tk()
+    root.withdraw()
+
+    # Make it almost invisible - no decorations, 0 size, top left corner.
+    root.overrideredirect(True)
+    root.geometry('0x0+0+0')
+
+    # Show window again and lift it to top so it can get focus,
+    # otherwise dialogs will end up behind the terminal.
+    root.deiconify()
+    root.lift()
+    root.focus_force()
+
     dir = filedialog.askdirectory(
         initialdir=os.getcwd(),
         title=title
@@ -281,7 +293,20 @@ def askFile(lookfor=None):
     else:
         title = "Select File"
     
+    # Make a top-level instance and hide since it is ugly and big.
     root = Tk()
+    root.withdraw()
+
+    # Make it almost invisible - no decorations, 0 size, top left corner.
+    root.overrideredirect(True)
+    root.geometry('0x0+0+0')
+
+    # Show window again and lift it to top so it can get focus,
+    # otherwise dialogs will end up behind the terminal.
+    root.deiconify()
+    root.lift()
+    root.focus_force()
+
     f = filedialog.askopenfilename(title=title)
     root.destroy()
 
@@ -304,7 +329,7 @@ if __name__ == '__main__':
 
     while choice != '0':
         if choice == '1':
-            phasePlot(mainpath, "test", outputpath)
+            phasePlot(mainpath, outputpath)
         elif choice == '2':
             fractionationScheme(mainpath, outputpath)
 
