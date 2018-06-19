@@ -146,10 +146,10 @@ def phasePlot(DF, title, outputpath=None):
 
 def askAxes(DF):
     columns = list(DF.columns.values)
-
     options = dict(zip(list(range(len(columns))), columns))
 
-    print(options)
+    print(*options, sep='\n')
+    
 
 
 def fractionationScheme(mainpath, outputpath):
