@@ -258,8 +258,6 @@ def extractPhaseMain(phase_main, F):
                     iteration = [line]
                     faccessor += 1
 
-            DF = DF.set_index('Temperature')
-
         return DF
 
 
