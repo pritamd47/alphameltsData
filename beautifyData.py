@@ -67,6 +67,17 @@ def returnCols(tbl, line1, line2):
 
 
 def _extractPhaseMainT1(phase, f):
+    """For any particular phase data, which will be passed as a deque object,
+    this function will extract all the necessary columns and return a DataFrame
+    object.
+    
+    Arguments:
+        phase {deque object} -- for one phase, whole table from output, as a 
+            deque object
+        f {list} -- list of the Melt Fraction remaining data for each 
+            temperature
+    """
+
     phaseName = phase[0].split(" ")[0]
     
     line1 = phase.popleft()
@@ -76,10 +87,10 @@ def _extractPhaseMainT1(phase, f):
     
     rawData = []
     
-    for line in phase:
+    for line, F in zip(phase, f):
         PTcond = [x.strip() for x in line.split(" ")]
         PTcond.insert(2, phaseName)
-        PTcond.insert(9, None)      # As of now, insert F as None
+        PTcond.insert(9, None)
         rawData.append(PTcond)
     
     DF = pd.DataFrame(data=rawData, columns=columns)
