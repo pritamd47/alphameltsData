@@ -30,8 +30,10 @@ def returnCols(tbl, line1, line2):
     # 8. bulk_comp_tbl.txt -- starts with Bulk Composition
 
     if tbl == 1:
-        line2 = [x.strip().capitalize() for x in line2.split(' ')]
+        line2 = [x.strip() for x in line2.split(' ')]
         columns = line2
+        columns.remove('mass')
+        columns.insert(2, 'Mass')
         columns.insert(2, "Phase")
         columns.insert(9, "F")
     elif tbl == 2:

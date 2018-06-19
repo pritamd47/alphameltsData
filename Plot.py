@@ -140,11 +140,8 @@ def phasePlot(mainpath, title, outputpath=None):
     if choice.upper() == 'Y':
         plt.show()
 
-    choice = input("\nDo you want to save? (Y/N): ")
-    if choice.upper() == 'Y' and outputpath is None:
-        outputpath = input("Where do you want to save (relative path): ")
-
-    if outputpath and choice.upper() == 'Y':
+    choice = _choice("Do you want to save the plot?")
+    if choice:
         print("[+] Saving Plot at: {}".format(outputpath))
         if not os.path.exists(outputpath):
             try:
@@ -155,7 +152,7 @@ def phasePlot(mainpath, title, outputpath=None):
 
         fpath = outputpath + 'phasePlot.svg'
         fig.savefig(fpath, bbox_inches='tight')
-        fig.savefig(fpath.split('.')[0]+'.jpg', format='jpg', bbox_inches='tight')
+        fig.savefig(fpath.split('.')[0]+'.jpg', bbox_inches='tight')
 
 
 def askAxes(DF):
@@ -173,34 +170,73 @@ def askAxes(DF):
     return column
 
 
-def _plotfractionationScheme(DF, xCol, yCol):
-    fig, ax = plt.subplots()
-
+def _plotfractionationScheme(DF, xCol, yCol, fig=None, ax=None):
+    if not fig or not ax:
+        fig, ax = plt.subplots()
+        ax.set_xlabel(xCol)
+        ax.set_ylabel(yCol)
+    
+    # Check if the xCol and yCol are same
+    prevXcol = ax.get_xlabel()
+    prevYcol = ax.get_ylabel()
+    
+    if prevXcol != xCol or prevYcol != yCol:
+        print("[-] Data not matching! Check the columns you have selected!")
+        return fig, ax
+    
     DF[DF[xCol] is None] = 0.0
     DF[DF[yCol] is None] = 0.0
     
     xData, yData = DF[xCol], DF[yCol]
 
-    plt.plot(xData.values, yData.values)
-    plt.scatter(xData[0], yData[0], marker='+', linewidth=20)
-    plt.xlabel(xCol)
-    plt.ylabel(yCol)
-    plt.show()
+    ax.plot(xData.values, yData.values)
+    ax.scatter(xData[0], yData[0], marker='+', linewidth=20)
+
+    return fig, ax
+
+
+def _choice(ask):
+    choice = input("\n" + ask + " (Y/N): ")
+    if choice.capitalize() == 'Y':
+        return True
+    else:
+        return False
 
 
 def fractionationScheme(mainpath, outputpath):
-    print("\nChoose DataFrame containing Data")
-    DF = askFile("Choose DataFrame")
-    
-    DF = readDf(DF)
+    choice = True
 
-    xData = None
-    yData = None
+    fig, ax = (None, None)
     
-    xCol = askAxes(DF)
-    yCol = askAxes(DF)
+    while choice:
+        DF = readDf()
 
-    _plotfractionationScheme(DF, xCol, yCol)
+        xData = None
+        yData = None
+        
+        xCol = askAxes(DF)
+        yCol = askAxes(DF)
+
+        fig, ax = _plotfractionationScheme(DF, xCol, yCol, fig, ax)
+
+        choice = _choice("Do you want to add more Data? (New Data should be of same columns)")
+    
+    if _choice("Do you want to view the plot?"):
+        plt.show()
+    
+    if _choice("Do you want to save the plot?"):
+        print("[+] Saving Plot at: {}".format(outputpath))
+        if not os.path.exists(outputpath):
+            try:
+                os.makedirs(outputpath)
+            except Exception as e:
+                print(e.args)
+                sys.exit(2)
+
+        fpath = os.path.join(outputpath, 'fractionationPath')
+        fig.savefig(fpath+'.svg', bbox_inches='tight')
+        fig.savefig(fpath+'.jpg', bbox_inches='tight', )
+    
 
 
 def welcomeScreen():
@@ -252,7 +288,11 @@ def askFile(lookfor=None):
     return f
 
 
-def readDf(path):
+def readDf(path=None):
+    if not path:
+        print("\nChoose the File containing Data")
+        path = askFile("Choose DataFrame")
+
     DF = pd.read_csv(path)
     return DF
 
