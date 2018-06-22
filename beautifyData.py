@@ -32,7 +32,10 @@ def returnCols(tbl, line1, line2):
     if tbl == 1:
         line2 = [x.strip() for x in line2.split(' ')]
         columns = line2
+        columns.remove('mass')
+        columns.insert(2, 'Mass')
         columns.insert(2, "Phase")
+        columns.insert(9, "F")
     elif tbl == 2:
         line1 = line1.split(' ')
         oxides = line1[4:]
@@ -63,7 +66,18 @@ def returnCols(tbl, line1, line2):
     return columns
 
 
-def _extractPhaseMainT1(phase):
+def _extractPhaseMainT1(phase, f):
+    """For any particular phase data, which will be passed as a deque object,
+    this function will extract all the necessary columns and return a DataFrame
+    object.
+    
+    Arguments:
+        phase {deque object} -- for one phase, whole table from output, as a 
+            deque object
+        f {list} -- list of the Melt Fraction remaining data for each 
+            temperature
+    """
+
     phaseName = phase[0].split(" ")[0]
     
     line1 = phase.popleft()
@@ -73,9 +87,10 @@ def _extractPhaseMainT1(phase):
     
     rawData = []
     
-    for line in phase:
+    for line, F in zip(phase, f):
         PTcond = [x.strip() for x in line.split(" ")]
         PTcond.insert(2, phaseName)
+        PTcond.insert(9, None)
         rawData.append(PTcond)
     
     DF = pd.DataFrame(data=rawData, columns=columns)
@@ -175,6 +190,88 @@ def _extractPhaseDataT2(iteration, f, columns):
     return pd.DataFrame(data=currentEnv, columns=columns)
 
 
+def extractPhaseMain(phase_main, F):
+    """Extracts the Phase Data, and also adds remaining melt data to the 
+    DataFrame
+    
+    Arguments:
+        phase_main -- path to the input file containing Phase related Data
+        F {list} -- List of F (remaining melt fraction) values for all the 
+            temperatures
+    """
+    tbl = figureoutTable(phase_main)
+
+    with open(phase_main, 'r') as f:
+        output = deque(f.readlines())
+        title = output.popleft()
+        _ = output.popleft()
+        
+        if tbl == 1:
+            # List for storing all the DataFrames
+            phaseDFs = []
+            phase = deque()
+            
+            while len(output) > 0:
+                currentLine = output.popleft()
+                if currentLine.strip() != '':
+                    phase.append(currentLine)
+                else:
+                    phaseDFs.append(_extractPhaseMainT1(phase, F))
+                    phase = deque()
+        
+            DF = pd.concat(phaseDFs, join='outer', sort=False)
+            DF = DF.sort_values('Temperature', ascending=False)
+            DF = DF.reset_index()
+            DF = DF.drop(columns=['index'], errors='ignore')
+
+            temp = 0
+            previousTemp = None
+
+            for i, currentTemp in enumerate(DF['Temperature'].values):
+                if currentTemp == previousTemp:
+                    DF.loc[i, 'F'] = DF.loc[i-1, 'F']
+                else:
+                    DF.loc[i, 'F'] = F[temp]
+                    temp += 1
+                    previousTemp = currentTemp
+
+        elif tbl == 2:
+            iteration = []
+            
+            columns = returnCols(tbl, output[0], None)
+            
+            DF = pd.DataFrame(columns=columns)
+
+            # Getting the values for Melt Remaining (f)
+            fvals = F
+
+            # With every append, this goes up by one, hence can be effectively used 
+            # for accessing the correct f value fro the given PT condition
+            faccessor = 0
+
+            while(len(output) > 0):
+                
+                line = output.popleft().strip("\n")
+
+                if line.split(" ")[0] != "Pressure":
+                    iteration.append(line)
+                elif line.split(" ")[0] == "Pressure":
+                    if len(iteration) != 0:
+                        # Read the data and fill No data Values with None
+                        currentEnv = _extractPhaseDataT2(
+                            iteration,
+                            fvals[faccessor],
+                            columns
+                        )
+                        # Convert this to pandas DataFrame
+                        DF = DF.append(currentEnv)
+                    # Next iteration
+                    iteration = [line]
+                    faccessor += 1
+
+        return DF
+
+
 def extractSolidComp(path):
     """Reads a table file which as a generic column layout. Where, adter the
     name of the table, data is written as column names followed by data
@@ -270,75 +367,6 @@ def extractSystemMain(path):
     DF = pd.DataFrame(data=values, columns=columns)
     DF['F'] = pd.to_numeric(DF['F']).cumprod()
     return DF
-
-
-def extractPhaseMain(phase_main, F):
-    """Extracts the Phase Data, and also adds remaining melt data to the 
-    DataFrame
-    
-    Arguments:
-        phase_main -- path to the input file containing Phase related Data
-        F {list} -- List of F (remaining melt fraction) values for all the 
-            temperatures
-    """
-    tbl = figureoutTable(phase_main)
-
-    with open(phase_main, 'r') as f:
-        output = deque(f.readlines())
-        title = output.popleft()
-        _ = output.popleft()
-        
-        if tbl == 1:
-            # List for storing all the DataFrames
-            phaseDFs = []
-            phase = deque()
-            
-            while len(output) > 0:
-                currentLine = output.popleft()
-                if currentLine.strip() != '':
-                    phase.append(currentLine)
-                else:
-                    phaseDFs.append(_extractPhaseMainT1(phase))
-                    phase = deque()
-        
-            DF = pd.concat(phaseDFs, join='outer', sort=False)
-            DF = DF.sort_values('Temperature', ascending=False)
-
-        elif tbl == 2:
-            iteration = []
-            
-            columns = returnCols(tbl, output[0], None)
-            
-            DF = pd.DataFrame(columns=columns)
-
-            # Getting the values for Melt Remaining (f)
-            fvals = F
-
-            # With every append, this goes up by one, hence can be effectively used 
-            # for accessing the correct f value fro the given PT condition
-            faccessor = 0
-
-            while(len(output) > 0):
-                
-                line = output.popleft().strip("\n")
-
-                if line.split(" ")[0] != "Pressure":
-                    iteration.append(line)
-                elif line.split(" ")[0] == "Pressure":
-                    if len(iteration) != 0:
-                        # Read the data and fill No data Values with None
-                        currentEnv = _extractPhaseDataT2(
-                            iteration,
-                            fvals[faccessor],
-                            columns
-                        )
-                        # Convert this to pandas DataFrame
-                        DF = DF.append(currentEnv)
-                    # Next iteration
-                    iteration = [line]
-                    faccessor += 1
-
-        return DF
 
 
 def extractData(inputfiles):

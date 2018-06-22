@@ -11,30 +11,38 @@ import os
 
 def extractData(DF):
     reqDF = DF[['Temperature', 'Phase', 'Mass', 'F']]
+    reqDF = reqDF.set_index('Temperature')
 
-    yData = reqDF['Temperature'].drop_duplicates().values.tolist()
+    # Y Data
+    yData = reqDF.index.drop_duplicates()
 
     # For X Data, which is basically the melt fraction
-    xData = list(pd.unique(reqDF['F']))
-
-    # list for listing the phases
+    xData = []
+    for temp in yData:
+        F = reqDF.loc[temp, 'F']
+        if isinstance(F, np.float64):
+            xData.append(F)
+        else:
+            xData.append(F.values[0])
+    
     phases = []
+    deltaT = []    
 
-    # list for storing the temperatures where the phases change
-    deltaPhase = []
-
-    for temperature in yData:
-        
-        currentT = reqDF[reqDF['Temperature'] == temperature]
-        
-        currentPhases = tuple(currentT['Phase'].values)
-        
-        if len(phases) == 0:
-            phases.append(currentPhases)
+    for temp in reqDF.index:
+        avlP = reqDF.loc[temp, 'Phase']
+        if isinstance(avlP, str):
+            avlP = set([avlP])
+        else:
+            avlP = set(avlP.values)
             
-        if phases[-1] != currentPhases:
-            deltaPhase.append(temperature)
-            phases.append(currentPhases)
+        if len(phases) == 0:
+            phases.append(avlP)
+        elif avlP != phases[-1]:
+            phases.append(avlP)
+            deltaT.append(temp)    
+
+    # Appending last temperature Value
+    deltaT.append(reqDF.index[-1])
 
     polygons = []
     currentPolygon = [
@@ -43,21 +51,23 @@ def extractData(DF):
     ]
 
     for temperature, F in zip(yData, xData):
-        if temperature in deltaPhase:
+        if temperature in deltaT:
             currentPolygon.extend([
                 (F, temperature),
                 (0, temperature)
             ])
             
             polygons.append(currentPolygon)
+            # print("Created Polygon: ", temperature)
             currentPolygon = [
                 (0, temperature),
                 (F, temperature)
             ]
         else:
+            # print("Here: ", temperature)
             currentPolygon.append((F, temperature))
 
-    return xData, yData, phases, deltaPhase, polygons
+    return xData, yData, phases, deltaT, polygons
     
 
 def mapPhases(phases):
@@ -69,7 +79,7 @@ def mapPhases(phases):
         'orthopyroxene': 'Opx',
         'clinopyroxene': 'Cpx',
         'garnet': 'Grt',
-        'spinel': 'Spi',
+        'spinel': 'Sp',
         'aenigmatite': 'Angmt',
         'olivine': 'Ol'
     }
@@ -85,18 +95,22 @@ def mapPhases(phases):
     return tuple(beautifulPhases)
 
 
-def phasePlot(DF, title, outputpath=None):
+def phasePlot(mainpath, outputpath=None, title=None):
+    filename = "phase_main.csv"
+    DF = pd.read_csv(os.path.join(mainpath, filename))
+
     xData, yData, phases, deltaPhase, polygons = extractData(DF)
 
-    title = input("\nEnter Title for Graph: ")
+    if not title:
+        title = input("\nEnter Title for Graph: ")
 
     phases = mapPhases(phases)
 
     fig, ax = plt.subplots(figsize=(6, 8))
 
     plt.axis([0, 1.1, min(yData), max(yData)])
-    plt.xlabel('Melt fraction (f)')
-    plt.ylabel('Temperature (T)')
+    plt.xlabel('Melt fraction (F)')
+    plt.ylabel('Temperature')
 
     minorLocator = MultipleLocator(5)
     majorLocator = MultipleLocator(20)
@@ -126,11 +140,8 @@ def phasePlot(DF, title, outputpath=None):
     if choice.upper() == 'Y':
         plt.show()
 
-    choice("\nDo you want to save? (Y/N): ")
-    if choice.upper() == 'Y' and outputpath == None:
-        outputpath = input("Where do you want to save (relative path): ")
-
-    if outputpath:
+    choice = _choice("Do you want to save the plot?")
+    if choice:
         print("[+] Saving Plot at: {}".format(outputpath))
         if not os.path.exists(outputpath):
             try:
@@ -140,34 +151,92 @@ def phasePlot(DF, title, outputpath=None):
                 sys.exit(2)
 
         fpath = outputpath + 'phasePlot.svg'
-        plt.savefig(fpath, bbox_inches='tight')
-        plt.savefig(fpath.split('.')[0]+'.jpg', format='jpg', bbox_inches='tight')
+        fig.savefig(fpath, bbox_inches='tight')
+        fig.savefig(fpath.split('.')[0]+'.jpg', bbox_inches='tight')
 
 
 def askAxes(DF):
     columns = list(DF.columns.values)
     options = dict(zip(list(range(len(columns))), columns))
 
-    print(*options, sep='\n')
+    for key in options.keys():
+        print(key, ": ", options[key])
     
+    choice = int(input("\nSelect Column (Enter the number against required Data): "))
+
+    if choice in options.keys():
+        column = options[choice]
+    
+    return column
+
+
+def _plotfractionationScheme(DF, xCol, yCol, fig=None, ax=None):
+    if not fig or not ax:
+        fig, ax = plt.subplots()
+        ax.set_xlabel(xCol)
+        ax.set_ylabel(yCol)
+    
+    # Check if the xCol and yCol are same
+    prevXcol = ax.get_xlabel()
+    prevYcol = ax.get_ylabel()
+    
+    if prevXcol != xCol or prevYcol != yCol:
+        print("[-] Data not matching! Check the columns you have selected!")
+        return fig, ax
+    
+    DF[DF[xCol] is None] = 0.0
+    DF[DF[yCol] is None] = 0.0
+    
+    xData, yData = DF[xCol], DF[yCol]
+
+    ax.plot(xData.values, yData.values)
+    ax.scatter(xData[0], yData[0], marker='+', linewidth=20)
+
+    return fig, ax
+
+
+def _choice(ask):
+    choice = input("\n" + ask + " (Y/N): ")
+    if choice.capitalize() == 'Y':
+        return True
+    else:
+        return False
 
 
 def fractionationScheme(mainpath, outputpath):
-    print("\nChoose DataFrame for X Data")
-    DF1 = askFile("Choose DataFrame for X Data")
+    choice = True
 
-    choice = input("\nIs the Y Data in the same Dataframe? (Y/N): ")
-
-    if choice.upper() == 'Y':
-        DF2 = DF1
-    else:
-        DF2 = askFile("Choose DataFrame for Y Data")
+    fig, ax = (None, None)
     
-    DF1, DF2 = readDf(DF1), readDf(DF2)
+    while choice:
+        DF = readDf()
 
-    xData = askAxes(DF1)
+        xData = None
+        yData = None
+        
+        xCol = askAxes(DF)
+        yCol = askAxes(DF)
 
+        fig, ax = _plotfractionationScheme(DF, xCol, yCol, fig, ax)
 
+        choice = _choice("Do you want to add more Data? (New Data should be of same columns)")
+    
+    if _choice("Do you want to view the plot?"):
+        plt.show()
+    
+    if _choice("Do you want to save the plot?"):
+        print("[+] Saving Plot at: {}".format(outputpath))
+        if not os.path.exists(outputpath):
+            try:
+                os.makedirs(outputpath)
+            except Exception as e:
+                print(e.args)
+                sys.exit(2)
+
+        fpath = os.path.join(outputpath, 'fractionationPath')
+        fig.savefig(fpath+'.svg', bbox_inches='tight')
+        fig.savefig(fpath+'.jpg', bbox_inches='tight', )
+    
 
 def welcomeScreen():
     screenTxt = (
@@ -190,8 +259,21 @@ def askDir(lookfor='Working Directory'):
         title = 'Select the {}'.format(lookfor)
     else:
         title = 'Select Folder'
-
+    
+    # Make a top-level instance and hide since it is ugly and big.
     root = Tk()
+    root.withdraw()
+
+    # Make it almost invisible - no decorations, 0 size, top left corner.
+    root.overrideredirect(True)
+    root.geometry('0x0+0+0')
+
+    # Show window again and lift it to top so it can get focus,
+    # otherwise dialogs will end up behind the terminal.
+    root.deiconify()
+    root.lift()
+    root.focus_force()
+
     dir = filedialog.askdirectory(
         initialdir=os.getcwd(),
         title=title
@@ -211,13 +293,31 @@ def askFile(lookfor=None):
     else:
         title = "Select File"
     
+    # Make a top-level instance and hide since it is ugly and big.
     root = Tk()
+    root.withdraw()
+
+    # Make it almost invisible - no decorations, 0 size, top left corner.
+    root.overrideredirect(True)
+    root.geometry('0x0+0+0')
+
+    # Show window again and lift it to top so it can get focus,
+    # otherwise dialogs will end up behind the terminal.
+    root.deiconify()
+    root.lift()
+    root.focus_force()
+
     f = filedialog.askopenfilename(title=title)
+    root.destroy()
 
     return f
 
 
-def readDf(path):
+def readDf(path=None):
+    if not path:
+        print("\nChoose the File containing Data")
+        path = askFile("Choose DataFrame")
+
     DF = pd.read_csv(path)
     return DF
 
@@ -229,7 +329,7 @@ if __name__ == '__main__':
 
     while choice != '0':
         if choice == '1':
-            phasePlot(DF, outputpath)
+            phasePlot(mainpath, outputpath)
         elif choice == '2':
             fractionationScheme(mainpath, outputpath)
 
