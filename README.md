@@ -1,11 +1,19 @@
 # alphameltsData
+alphaMELTS is a very powerful piece of software, which is very extensively used in modelling of various scenarios of crystallisation as well as of melting. However, one caveat which I faced while using the output of the software, was how the output data was stored, as well as the format in which the data itself is stored in the files. alphameltsData contains a set of utility scripts which can be used to standardize the output from any given alphaMELTS batch run, and clean the workspace for further modelling. Basic plotting of these data can also be done, for obtaining rapid results.
 
-To use these scripts, all you have to do is, download the zip of the scripts using the option available.
-Once Downloaded, extract these files.
-In your "links" folder of alphaMelts Software, create a folder named "Scripts"
-Copy all the extracted files (not folder, the files), to this "Scripts" folder.
+## Scripts
+There are two python scripts present in this bundle.
+> beautifyData.py <br>
+> plot.py
 
-All you have to do next is, after running the alphaMelts software, and closing the software by clicking the 'X' mark at the top,
-run the "beautifyData.bat" file from the Scripts folder, so that output files are created.
+Each of these can either be run, using the `python <script.py>` or using the `<script>.bat` file that is also present in the bundle.
 
-After that, the data can further be used to create beautidul plots, either using Python or some other Third Party Software
+1. Calling the `.bat` files, default settings will be used to run the script.
+2. One has to either set the command line parameters, or can use the menu system to input the required data while using `python` to run the scripts.
+
+## How to use these files?
+To use these scripts,
+1. Download the zip file containing the scripts from the main page of the repository (or use this link: [Download]https://github.com/pritamd47/alphameltsData/archive/master.zip)
+2. In your links/ directory (where you run the alphamelts software), create another directory, naming it _Scripts_.
+3. Once downloaded, extract the files in the _Scripts_ folder that you just created.
+4. Now once you run the alphamelts software, and have the output files, navigate into the Scripts folder, and run the `beautifyData.bat` script to organise the output files and create the respective CSV files. `Plot.bat` can then be used to create necessary plots
