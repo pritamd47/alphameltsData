@@ -4,9 +4,10 @@ from matplotlib.patches import Polygon
 import matplotlib
 from matplotlib.ticker import MultipleLocator
 import numpy as np
-from tkinter import filedialog
-from tkinter import *
 import os
+
+from utils import askDir, \
+                  _choice
 
 
 def extractData(DF):
@@ -195,14 +196,6 @@ def _plotfractionationScheme(DF, xCol, yCol, fig=None, ax=None):
     return fig, ax
 
 
-def _choice(ask):
-    choice = input("\n" + ask + " (Y/N): ")
-    if choice.capitalize() == 'Y':
-        return True
-    else:
-        return False
-
-
 def fractionationScheme(mainpath, outputpath):
     choice = True
 
@@ -250,67 +243,6 @@ def welcomeScreen():
     choice = input(screenTxt)
 
     return str(choice)
-
-
-def askDir(lookfor='Working Directory'):
-    print("Please select the Working Directory")
-
-    if lookfor:
-        title = 'Select the {}'.format(lookfor)
-    else:
-        title = 'Select Folder'
-    
-    # Make a top-level instance and hide since it is ugly and big.
-    root = Tk()
-    root.withdraw()
-
-    # Make it almost invisible - no decorations, 0 size, top left corner.
-    root.overrideredirect(True)
-    root.geometry('0x0+0+0')
-
-    # Show window again and lift it to top so it can get focus,
-    # otherwise dialogs will end up behind the terminal.
-    root.deiconify()
-    root.lift()
-    root.focus_force()
-
-    dir = filedialog.askdirectory(
-        initialdir=os.getcwd(),
-        title=title
-    )
-    root.withdraw()
-    root.destroy()
-
-    dir += '/'
-    outputpath = dir + 'plots/'
-
-    return dir, outputpath
-
-
-def askFile(lookfor=None):
-    if lookfor:
-        title = lookfor
-    else:
-        title = "Select File"
-    
-    # Make a top-level instance and hide since it is ugly and big.
-    root = Tk()
-    root.withdraw()
-
-    # Make it almost invisible - no decorations, 0 size, top left corner.
-    root.overrideredirect(True)
-    root.geometry('0x0+0+0')
-
-    # Show window again and lift it to top so it can get focus,
-    # otherwise dialogs will end up behind the terminal.
-    root.deiconify()
-    root.lift()
-    root.focus_force()
-
-    f = filedialog.askopenfilename(title=title)
-    root.destroy()
-
-    return f
 
 
 def readDf(path=None):
