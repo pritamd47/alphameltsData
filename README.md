@@ -13,6 +13,6 @@ Each of these can either be run, using the `python <script.py>` or using the `<s
 
 ## How to use these files?
 To use these scripts,
-1. Download the zip file containing the scripts from the main page of the repository (or use this link: [Download]https://github.com/pritamd47/alphameltsData/archive/master.zip )
+1. Download the zip file containing the scripts from the main page of the repository (or use this link: [Download](https://github.com/pritamd47/alphameltsData/archive/master.zip) )
 2. Extract the contents of the zip file in a folder named alphameltsData, In your links/ directory (where you run the alphamelts software).
 3. Now after you run the alphamelts software, and have the output files, navigate into the alphameltsData folder, and run the `beautifyData.bat` (or you can use python to run the scripts) script to organise the output files and create the respective CSV files. `Plot.bat` can then be used to create necessary plots
