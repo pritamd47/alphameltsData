@@ -462,7 +462,7 @@ if __name__ == '__main__':
         print("[-] Working Directory doesn't exist; Exiting")
         sys.exit(2)
 
-    outputpath = mainpath + "/alpameltsData/output/{}/".format(
+    outputpath = mainpath + "/alphameltsData/output/{}/".format(
         dt.now().strftime('%Y-%m-%d_%H-%M')
     )
 
